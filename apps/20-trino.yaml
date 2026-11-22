@@ -14,11 +14,11 @@ spec:
       valuesObject:
         server: {workers: 1}
         coordinator:
-          jvm: {maxHeapSize: "1G"}
-          resources: {requests: {cpu: 250m, memory: 1536Mi}, limits: {memory: 2Gi}}
+          jvm: {maxHeapSize: "2G"}
+          resources: {requests: {cpu: 250m, memory: 2Gi}, limits: {memory: 3Gi}}
         worker:
-          jvm: {maxHeapSize: "1G"}
-          resources: {requests: {cpu: 250m, memory: 1536Mi}, limits: {memory: 2Gi}}
+          jvm: {maxHeapSize: "2G"}
+          resources: {requests: {cpu: 250m, memory: 2Gi}, limits: {memory: 3Gi}}
         additionalCatalogs:
           lakehouse: |
             connector.name=iceberg
