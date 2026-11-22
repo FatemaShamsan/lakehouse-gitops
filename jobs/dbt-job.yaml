@@ -1,0 +1,27 @@
+# Runs dbt once against Trino (Silver -> Gold). Later, Airflow triggers this.
+apiVersion: batch/v1
+kind: Job
+metadata: {name: dbt-build, namespace: lakehouse}
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: dbt
+          image: python:3.12-slim
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -e
+              mkdir -p /tmp/dbt/models && cd /tmp/dbt
+              cp /dbt/dbt_project.yml /dbt/profiles.yml .
+              cp /dbt/sources.yml /dbt/daily_revenue.sql models/
+              pip install --quiet dbt-trino
+              dbt run  --profiles-dir .
+              dbt test --profiles-dir .
+          volumeMounts: [{name: dbt-code, mountPath: /dbt}]
+          resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {memory: 1Gi}}
+      volumes:
+        - name: dbt-code
+          configMap: {name: dbt-code}

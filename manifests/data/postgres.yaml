@@ -1,0 +1,56 @@
+# Stand-in for Aurora PostgreSQL. Airflow and Superset keep their metadata here.
+# Demo credentials only. Never commit real passwords to Git.
+apiVersion: v1
+kind: Secret
+metadata: {name: postgres-credentials, namespace: lakehouse}
+stringData:
+  POSTGRES_USER: lakehouse
+  POSTGRES_PASSWORD: lakehouse-demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: postgres-init, namespace: lakehouse}
+data:
+  init.sql: |
+    CREATE DATABASE airflow;
+    CREATE DATABASE superset;
+---
+apiVersion: v1
+kind: Service
+metadata: {name: postgres, namespace: lakehouse}
+spec:
+  selector: {app: postgres}
+  ports: [{port: 5432, targetPort: 5432}]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: {name: postgres, namespace: lakehouse}
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector: {matchLabels: {app: postgres}}
+  template:
+    metadata: {labels: {app: postgres}}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports: [{containerPort: 5432}]
+          envFrom: [{secretRef: {name: postgres-credentials}}]
+          env: [{name: PGDATA, value: /var/lib/postgresql/data/pgdata}]
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+            - {name: init, mountPath: /docker-entrypoint-initdb.d}
+          readinessProbe:
+            exec: {command: ["pg_isready", "-U", "lakehouse"]}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources: {requests: {cpu: 100m, memory: 128Mi}, limits: {memory: 384Mi}}
+      volumes:
+        - name: init
+          configMap: {name: postgres-init}
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources: {requests: {storage: 2Gi}}
