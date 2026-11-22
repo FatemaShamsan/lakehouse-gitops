@@ -1,0 +1,21 @@
+# Example Kyverno policy. Audit mode: reports violations, blocks nothing.
+# The demo MinIO and catalog images use :latest on purpose, so you can see a real policy report.
+# Fix them by pinning tags, then change Audit to Enforce.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: {name: disallow-latest-tag}
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-pinned-image-tag
+      match:
+        any: [{resources: {kinds: [Pod]}}]
+      exclude:
+        any: [{resources: {namespaces: [kube-system, argocd, kyverno, envoy-gateway-system]}}]
+      validate:
+        message: "Pin the image tag. ':latest' or no tag is not allowed."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
